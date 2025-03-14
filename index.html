@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live GPS Tracker</title>
+    <title>Real-Time GPS Tracker</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
-    <!-- Firebase -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 
-        // Firebase Configuration
+        // Your Firebase Configuration
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
+            apiKey: "AIzaSyA7TOF5OC8g57eOByFrwmhIerMdl6-QYo8",
             authDomain: "wifitracking1202.firebaseapp.com",
             databaseURL: "https://wifitracking1202-default-rtdb.firebaseio.com",
             projectId: "wifitracking1202",
@@ -30,7 +30,29 @@
         const db = getDatabase(app);
         const gpsRef = ref(db, "GPSData");
 
+        let marker, map;
+
+        // Function to update map with live GPS data
+        function updateMap(latitude, longitude, speed, altitude) {
+            document.getElementById("latitude").innerText = latitude.toFixed(6);
+            document.getElementById("longitude").innerText = longitude.toFixed(6);
+            document.getElementById("speed").innerText = speed + " km/h";
+            document.getElementById("altitude").innerText = altitude + " m";
+
+            let newPosition = [latitude, longitude];
+            marker.setLatLng(newPosition);
+            map.setView(newPosition, 15);
+        }
+
+        // Fetch live GPS data from Firebase every 5 sec
         document.addEventListener("DOMContentLoaded", function () {
+            map = L.map('map').setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            marker = L.marker([20.5937, 78.9629]).addTo(map);
+
+            // Listen for GPS updates from Firebase
             onValue(gpsRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -38,70 +60,30 @@
                 }
             });
         });
+
+        // Function to trigger buzzer
+        function triggerBuzzer() {
+            const buzzerRef = ref(db, "GPSData/buzzer");
+            set(buzzerRef, 1); // Turn buzzer ON
+            setTimeout(() => set(buzzerRef, 0), 5000); // Auto turn OFF after 5s
+        }
     </script>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-        body {
-            background-color: #121212;
-            color: #fff;
-            text-align: center;
-            padding: 20px;
-        }
-        .container {
-            max-width: 700px;
-            margin: auto;
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0px 0px 15px rgba(0, 255, 255, 0.3);
-            animation: fadeIn 1.5s ease-in-out;
-        }
-        h1 {
-            font-size: 26px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #00ffff;
-            text-transform: uppercase;
-        }
-        .gps-info {
-            background: #2a2a2a;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-between;
-            box-shadow: 0px 0px 10px rgba(0, 255, 255, 0.2);
-        }
-        .gps-info p {
-            margin: 0;
-            font-size: 18px;
-            color: #fff;
-        }
-        .gps-info span {
-            font-weight: bold;
-            color: #00ffcc;
-        }
-        #map {
-            width: 100%;
-            height: 400px;
-            border-radius: 12px;
-            border: 2px solid #333;
-            margin-top: 15px;
-        }
-        .footer {
-            margin-top: 20px;
-            font-size: 14px;
-            opacity: 0.7;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #121212; color: #fff; text-align: center; padding: 20px; }
+        .container { max-width: 700px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0px 0px 15px rgba(0, 255, 255, 0.3); animation: fadeIn 1.5s ease-in-out; }
+        h1 { font-size: 26px; font-weight: bold; margin-bottom: 15px; color: #00ffff; text-transform: uppercase; }
+        .gps-info { background: #2a2a2a; padding: 15px; border-radius: 10px; margin: 10px 0; display: flex; justify-content: space-between; box-shadow: 0px 0px 10px rgba(0, 255, 255, 0.2); }
+        .gps-info p { margin: 0; font-size: 18px; color: #fff; }
+        .gps-info span { font-weight: bold; color: #00ffcc; }
+        #map { width: 100%; height: 400px; border-radius: 12px; border: 2px solid #333; margin-top: 15px; }
+        .buzzer-btn { background-color: #ff1744; color: #fff; padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; margin-top: 15px; transition: 0.3s; }
+        .buzzer-btn:hover { background-color: #d50000; }
+        .footer { margin-top: 20px; font-size: 14px; opacity: 0.7; }
 
         /* Animations */
         @keyframes fadeIn {
@@ -122,26 +104,8 @@
             <p>Altitude: <span id="altitude">0 m</span></p>
         </div>
         <div id="map"></div>
+        <button class="buzzer-btn" onclick="triggerBuzzer()">🔊 Activate Buzzer</button>
         <p class="footer">Tracking in real-time... 📡</p>
     </div>
-
-    <script>
-        let map = L.map('map').setView([20.5937, 78.9629], 5);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-        let marker = L.marker([20.5937, 78.9629]).addTo(map);
-
-        function updateMap(latitude, longitude, speed, altitude) {
-            document.getElementById("latitude").innerText = latitude.toFixed(6);
-            document.getElementById("longitude").innerText = longitude.toFixed(6);
-            document.getElementById("speed").innerText = speed + " km/h";
-            document.getElementById("altitude").innerText = altitude + " m";
-
-            let newPosition = [latitude, longitude];
-            marker.setLatLng(newPosition);
-            map.setView(newPosition, 15);
-        }
-    </script>
 </body>
 </html>
